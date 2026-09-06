@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restaurant Assistant</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Karla:wght@400;500;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Karla', sans-serif;
+    background: #1f2d20;
+    color: #f4ede1;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .chat-container {
+    width: 100%;
+    max-width: 420px;
+    background: #f4ede1;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    display: flex;
+    flex-direction: column;
+    height: 620px;
+    overflow: hidden;
+  }
+  .chat-header {
+    background: #d9772e;
+    color: #fff;
+    padding: 18px 20px;
+    font-family: 'Fraunces', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #fbf7ef;
+  }
+  .msg {
+    max-width: 82%;
+    padding: 11px 15px;
+    border-radius: 14px;
+    line-height: 1.45;
+    font-size: 0.92rem;
+    white-space: pre-wrap;
+  }
+  .msg.bot { background: #eae0cc; color: #2b2b26; align-self: flex-start; border-bottom-left-radius: 4px; }
+  .msg.user { background: #1f2d20; color: #f4ede1; align-self: flex-end; border-bottom-right-radius: 4px; }
+  .msg.typing { background: #eae0cc; color: #8a8578; align-self: flex-start; font-style: italic; }
+  .input-row { display: flex; padding: 14px; gap: 10px; background: #f4ede1; border-top: 1px solid #e2d6bd; }
+  .input-row input {
+    flex: 1; padding: 11px 14px; border-radius: 24px; border: 1px solid #d8cbae;
+    font-family: 'Karla', sans-serif; font-size: 0.92rem; outline: none; background: #fff;
+  }
+  .input-row input:focus { border-color: #d9772e; }
+  .input-row button {
+    background: #d9772e; color: #fff; border: none; border-radius: 24px; padding: 0 20px;
+    font-weight: 700; cursor: pointer;
+  }
+  .input-row button:disabled { background: #d8cbae; cursor: not-allowed; }
+  .suggestions { padding: 0 20px 14px; display: flex; gap: 8px; flex-wrap: wrap; background: #fbf7ef; }
+  .suggestion-chip {
+    background: #fff; border: 1px solid #d8cbae; border-radius: 16px; padding: 6px 12px;
+    font-size: 0.78rem; cursor: pointer; color: #4a4534;
+  }
+  .suggestion-chip:hover { background: #eae0cc; }
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+  <div class="chat-header">Restaurant Assistant</div>
+
+  <div class="messages" id="messages">
+    <div class="msg bot">Hi! I can tell you about our restaurants, or book you a table. Try asking about cuisine or hours, or say "book a table."</div>
+  </div>
+
+  <div class="suggestions">
+    <div class="suggestion-chip" onclick="sendSuggestion('What restaurants do you have?')">What restaurants?</div>
+    <div class="suggestion-chip" onclick="sendSuggestion('Book a table for 2 at Yellow Chilli tonight at 7pm, name John')">Book a table</div>
+    <div class="suggestion-chip" onclick="sendSuggestion('Check my reservation, name John')">Check my booking</div>
+  </div>
+
+  <div class="input-row">
+    <input type="text" id="userInput" placeholder="Ask or book..." onkeydown="if(event.key==='Enter') sendMessage()">
+    <button id="sendBtn" onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script>
+  const API_URL = ' https://restaurant-assistant-backend-e4ws.onrender.com/api/chat';
+  const messagesEl = document.getElementById('messages');
+  const inputEl = document.getElementById('userInput');
+  const sendBtn = document.getElementById('sendBtn');
+
+  function addMessage(text, sender) {
+    const div = document.createElement('div');
+    div.className = `msg ${sender}`;
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+
+  function sendSuggestion(text) {
+    inputEl.value = text;
+    sendMessage();
+  }
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+    addMessage(text, 'user');
+    inputEl.value = '';
+    sendBtn.disabled = true;
+    const typingEl = addMessage('Thinking...', 'typing');
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json();
+      typingEl.remove();
+      addMessage(data.answer || "Something went wrong.", 'bot');
+    } catch (err) {
+      typingEl.remove();
+      addMessage("Couldn't reach the server. Make sure server.js is running.", 'bot');
+    }
+
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+</script>
+
+</body>
+</html>
